@@ -37,9 +37,11 @@ def train_encoder(train_params, train_models, valid_params, valid_models,
     Keep_prob = tf.placeholder(dtype=tf.float32, name = "drop_rate")
 
     Latent = neural_network(Params_in, num_latent, num_hiddens, Keep_prob, name="encoder")
-    Model_out = tf.nn.softplus(neural_network(Latent, train_models.shape[1], num_hiddens, Keep_prob, name="decoder"))
-    Likes = -0.5*tf.square(Model_out - Model_in)
-    Likelihood = tf.reduce_mean(tf.reduce_sum(Likes, axis=1))
+    Params_out = neural_network(Latent, train_params.shape[1], num_hiddens, Keep_prob, name="decoder_params")
+    Model_out = tf.nn.softplus(neural_network(Latent, train_models.shape[1], num_hiddens, Keep_prob, name="decoder_model"))
+    Likes_model = tf.reduce_sum(-0.5*tf.square(Model_out - Model_in), axis=1)
+    Likes_params = tf.reduce_sum(-0.5*tf.square(Params_out - Params_in), axis=1)
+    Likelihood = tf.reduce_mean(Likes_params + Likes_model)
 
     Recon_error = - Likelihood
     Regul_error = 0
@@ -63,9 +65,9 @@ def train_encoder(train_params, train_models, valid_params, valid_models,
             if i % 100 == 0:
                 print(i, '%.3e' % loss_total, end=" ; ")
 
-            train_latent, train_models_out = sess.run([Latent, Model_out],
+            train_params_out, train_latent, train_models_out = sess.run([Params_out, Latent, Model_out],
                 feed_dict={Params_in: train_params, Model_in: train_models, Keep_prob: keep_prob})
-            valid_latent, valid_models_out = sess.run([Latent, Model_out],
+            valid_params_out, valid_latent, valid_models_out = sess.run([Params_out, Latent, Model_out],
                 feed_dict={Params_in: valid_params, Model_in: valid_models, Keep_prob: keep_prob})
 
-    return train_latent, train_models_out, valid_latent, valid_models_out
+    return train_params_out, train_latent, train_models_out, valid_params_out, valid_latent, valid_models_out
